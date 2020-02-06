@@ -3,7 +3,7 @@
 # 科学上网
 
 作者：左耳朵 [http://coolshell.cn](http://coolshell.cn)
-更新时间：2019-11-02
+更新时间：2019-11-24
 
 这篇文章可以写的更好，欢迎到 [https://github.com/haoel/haoel.github.io](https://github.com/haoel/haoel.github.io) 更新
 
@@ -35,6 +35,8 @@
     - [6.2 V2Ray](#62-v2ray)
     - [6.3 补充](#63-补充)
   - [7. 其它](#7-其它)
+    - [7.1 其它方式](#71-其它方式)
+    - [7.2 搭建脚本](#72-搭建脚本)
 
 ## 0. 序
 
@@ -86,7 +88,7 @@
 - [AWS LightSail](https://lightsail.aws.amazon.com/) 是一个非常便宜好用的服务，最低配置一个月 $3.5 美金，目前的Zone不多，推荐使用日本或新加坡（支持银联卡）
 - [AWS EC2](https://aws.amazon.com/cn/)香港、日本或韩国申请个免费试用一年的EC2 VPS （支持银联卡）
 - [Google Cloud Platform](https://cloud.google.com/)提供免费试用，赠送300刀赠金（需要国际信用卡）
-- [Linode](https://www.linode.com)买个一月USD10刀的VPS
+- [Linode](https://www.linode.com)买个一月USD5刀的VPS
 - [Conoha](https://www.conoha.jp/zh/)上买一个日本的VPS，一个月900日元 （可以支付宝）
 - [Vultr](https://www.vultr.com)上买一个日本的VPS，一个月5刀 （可以支付宝）
 - [Oracle Cloud](https://www.oracle.com/cloud/free/)两台VPS无限期使用，可选美日韩等地（需要国际信用卡）
@@ -139,6 +141,8 @@ NCP线路全长13,000公里，连接美国俄勒冈州希尔斯伯勒，连接�
 
 ## 3. 搭建相关代理服务
 
+> 注：如下的搭建和安装脚本可参看本库的 scripts 目录下的脚本，如： [Ubuntu 18.04 Installation Script](https://github.com/haoel/haoel.github.io/blob/master/scripts/install.ubuntu.18.04.sh) （感谢网友 [@gongzili456](https://github.com/gongzili456) 开发）
+
 ### 3.1 设置Docker服务
 
 首先，你要安装一个Docker CE 服务，这里你要去看一下docker官方的安装文档：
@@ -154,7 +158,7 @@ TCP BBR（Bottleneck Bandwidth and Round-trip propagation time）是由Google设
 
 BBR之后移植入Linux内核4.9版本，并且对于QUIC可用。
 
-如果开启，请参看 《[开启TCP BBR拥塞控制算法](https://github.com/iMeiji/shadowsocks_install/wiki/开启TCP-BBR拥塞控制算法) 》
+如果开启，请参看 《[开启TCP BBR拥塞控制算法](https://github.com/iMeiji/shadowsocks_install/wiki/开启-TCP-BBR-拥塞控制算法) 》
 
 ### 3.3 用 gost 设置 HTTPS 服务
 
@@ -172,7 +176,7 @@ $ sudo certbot certonly --standalone
 
 接下来就是启动 gost 服务了，我们这里还是使用 Docker 的方式建立 gost 服务器。
 ```
-#!bin/bash
+#!/bin/bash
 
 ## 下面的四个参数需要改成你的
 DOMAIN="YOU.DOMAIN.NAME"
@@ -181,10 +185,10 @@ PASS="password"
 PORT=443
 
 BIND_IP=0.0.0.0
-CERT_DIR=/etc/letsencrypt/
+CERT_DIR=/etc/letsencrypt
 CERT=${CERT_DIR}/live/${DOMAIN}/fullchain.pem
 KEY=${CERT_DIR}/live/${DOMAIN}/privkey.pem
-docker run -d --name gost \
+sudo docker run -d --name gost \
     -v ${CERT_DIR}:${CERT_DIR}:ro \
     --net=host ginuerzh/gost \
     -L "http2://${USER}:${PASS}@${BIND_IP}:${PORT}?cert=${CERT}&key=${KEY}&probe_resist=code:404"
@@ -309,13 +313,13 @@ gost -L ss://aes-128-cfb:passcode@:1984 -F 'https://USER:PASS@DOMAIN:443'
 
 ## 5. 流量伪装和其它方式
 
-无论你用VPN，SS，V2Ray, Brook，都能被识别，**只有使用 gost 建造 HTTPS 的服务，才无法分别**
+无论你用VPN，SS，SSR，都有可能被识别，**只有使用 HTTP over TLS 的样子，才会跟正常的流量混在一起，很难被识别**，所以，目前来说，V2Ray客户端 + Nginx + V2Ray服务端的方式，或是gost的HTTPS的方式，基本上来说，在网络四层上看到的都是TLS的包，很难被识别。这种代理服务只，我觉得只能做探测，或是得到更多的算力来做统计学分析。所以，V2Ray 和 gost 的服务器端用 nginx 再挡一道，那么就很难被发现了。
 
 > **注：** 说句老实话，我其时并不想害怕别人知道自己的上什么样的网站，因为我觉得我访问的都是合法的网站，但是就今天这个局势我也没办法——为什么要让像我这样的光明正大的良民搞得跟偷鸡摸狗之徒一样……
 
 ### 5.1 V2Ray
 
-V2Ray 是一个与 Shadowsocks 类似的代理软件。
+V2Ray 可以配置成一个非常隐蔽的代理软件。
 
  - V2Ray 用户手册：[https://www.v2ray.com](https://www.v2ray.com)
  - V2Ray 项目地址：[https://github.com/v2ray/v2ray-core](https://github.com/v2ray/v2ray-core)
@@ -372,9 +376,19 @@ VPS 上正常安装并配置好 V2Ray，注意两点:
 
 ## 7. 其它 
 
+### 7.1 其它方式
+
 如下还有一些其它的方式（注：均由网友提供，我没有验证过）
 
 [Outline](https://getoutline.org/en/home) 是由 Google 旗下 [Jigsaw](https://jigsaw.google.com/) 团队开发的整套翻墙解决方案。Server 端使用 Shadowsocks，MacOS, Windows, iOS, Android 均有官方客户端。使用 Outline Manager 可以一键配置 DigitalOcean。其他平台例如 AWS, Google Cloud 也提供相应脚本。主要优点就是使用简单并且整个软件栈全部[开源](https://github.com/Jigsaw-Code/?q=outline)，有专业团队长期维护。
+
+### 7.2 搭建脚本
+
+上述的搭建和安装脚本可参看本库的 scripts 目录下的脚本（感谢网友 [@gongzili456](https://github.com/gongzili456) 开发）
+
+-  [Ubuntu 18.04 Installation Script](https://github.com/haoel/haoel.github.io/blob/master/scripts/install.ubuntu.18.04.sh) 
+
+欢迎补充和改善！
 
 （全文完）
 
